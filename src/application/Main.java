@@ -27,7 +27,9 @@ public class Main extends Application {
 			tableController = loader.getController();
 			tableController.setMainApp(this);
 			this.primaryStage.setScene(scene);
+			this.primaryStage.setResizable(false);
 			this.primaryStage.show();
+			tableController.getLabelTextField().requestFocus();
 		} catch (IOException e) {
 			System.err.println("Unable to load central table view");
 			System.exit(1); // error code

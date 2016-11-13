@@ -19,7 +19,6 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
-import javafx.util.StringConverter;
 import javafx.util.converter.NumberStringConverter;
 
 public class MainTableViewController {
@@ -43,6 +42,8 @@ public class MainTableViewController {
 	@FXML
 	private Button removeButton;
 	@FXML
+	private Button debugButton;
+	@FXML
 	private TextField resultTextField;
 	@FXML
 	private TextField sumTextField;
@@ -59,8 +60,10 @@ public class MainTableViewController {
 
 	@FXML
 	private void initialize() {
+		tableView.setItems(ingredients);
 		initTableColumns();
 		initBindings();
+
 	}
 
 	private void initTableColumns() {
@@ -80,13 +83,15 @@ public class MainTableViewController {
 
 	private void initBindings() {
 		amountSumBinding = Bindings.createDoubleBinding(
-				() -> ingredients.stream().collect(Collectors.summingDouble(Ingredient::getAmount)));
+				() -> ingredients.stream().collect(Collectors.summingDouble(Ingredient::getAmount)), ingredients);
 		calorieSumBinding = Bindings.createDoubleBinding(
-				() -> ingredients.stream().collect(Collectors.summingDouble(Ingredient::getCalories)));
+				() -> ingredients.stream()
+						.collect(Collectors.summingDouble(ing -> ing.getCalories() / 100 * ing.getAmount())),
+				ingredients);
 		resultBinding = Bindings.multiply(100, calorieSumBinding.divide(amountSumBinding));
 		// TextField bindings
-		sumTextField.textProperty().bind(amountSumBinding.asString());
-		resultTextField.textProperty().bind(resultBinding.asString());
+		sumTextField.textProperty().bind(calorieSumBinding.asString("%.0f"));
+		resultTextField.textProperty().bind(resultBinding.asString("%.1f"));
 	}
 
 	@FXML
@@ -99,6 +104,7 @@ public class MainTableViewController {
 			labelTextField.clear();
 			amountTextField.clear();
 			caloriesTextField.clear();
+			labelTextField.requestFocus();
 		} else {
 			showAlertDialog(AlertTypeEnum.INGREDIENT_INVALID, tmpIngredient);
 		}
@@ -109,13 +115,21 @@ public class MainTableViewController {
 		int selectedIndex = tableView.getSelectionModel().getSelectedIndex();
 		if (selectedIndex >= 0) {
 			ingredients.remove(selectedIndex);
+			labelTextField.requestFocus();
 		} else {
 			showAlertDialog(AlertTypeEnum.NO_SELECTION);
 		}
 	}
 
-	public void setMainApp(Main mainApp) {
-		this.mainApp = mainApp;
+	@FXML
+	private void printDebugOutput() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("Bindings:\n");
+		sb.append("\nResultBinding: " + resultBinding.doubleValue());
+		sb.append("\nAmountSumBinding: " + amountSumBinding.doubleValue());
+		sb.append("\nCalorieSumBinding: " + calorieSumBinding.doubleValue());
+		sb.append("\nModel-Liste:\n").append(ingredients.toString());
+		System.out.println(sb.toString());
 	}
 
 	private void showAlertDialog(AlertTypeEnum alertType) {
@@ -132,18 +146,12 @@ public class MainTableViewController {
 		alert.showAndWait();
 	}
 
-	private class NumberToStringConverter extends StringConverter<Number> {
+	public void setMainApp(Main mainApp) {
+		this.mainApp = mainApp;
+	}
 
-		@Override
-		public Number fromString(String string) {
-			return Utilities.Strings.parseDouble(string);
-		}
-
-		@Override
-		public String toString(Number object) {
-			return object.toString();
-		}
-
+	public TextField getLabelTextField() {
+		return labelTextField;
 	}
 
 	private enum AlertTypeEnum {
